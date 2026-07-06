@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Absensi</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    video, canvas { width: 100%; max-width: 400px; border-radius: 10px; }
+    input, button { width: 100%; max-width: 400px; padding: 12px; margin: 8px 0; font-size: 16px; }
+    button { background: #4CAF50; color: white; border: none; border-radius: 6px; }
+    #hasil { margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>Absensi Kehadiran</h2>
+
+  <input type="text" id="nama" placeholder="Nama lengkap">
+
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <button onclick="ambilFoto()">📷 Ambil Foto</button>
+  <button onclick="kirimAbsen()">✅ Kirim Absensi</button>
+
+  <div id="hasil"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    let fotoBase64 = "";
+
+    // Minta izin kamera saat halaman dibuka
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => {
+        document.getElementById('hasil').innerText = "Gagal akses kamera: " + err.message;
+      });
+
+    function ambilFoto() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      fotoBase64 = canvas.toDataURL('image/jpeg');
+      document.getElementById('hasil').innerText = "Foto berhasil diambil ✅";
+    }
+
+    function kirimAbsen() {
+      const nama = document.getElementById('nama').value;
+      if (!nama) { alert("Isi nama dulu"); return; }
+      if (!fotoBase64) { alert("Ambil foto dulu"); return; }
+
+      document.getElementById('hasil').innerText = "Mengirim...";
+
+      fetch("GANTI_DENGAN_URL_APPS_SCRIPT", {
+        method: "POST",
+        body: JSON.stringify({ nama: nama, foto: fotoBase64 }),
+        headers: { "Content-Type": "text/plain" }
+      })
+      .then(res => res.text())
+      .then(data => {
+        document.getElementById('hasil').innerText = "Absensi berhasil dikirim ✅";
+      })
+      .catch(err => {
+        document.getElementById('hasil').innerText = "Gagal kirim: " + err;
+      });
+    }
+  </script>
+
+</body>
+</html>
