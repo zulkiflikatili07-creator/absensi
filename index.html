@@ -1,72 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Absensi</title>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px; }
-    video, canvas { width: 100%; max-width: 400px; border-radius: 10px; }
-    input, button { width: 100%; max-width: 400px; padding: 12px; margin: 8px 0; font-size: 16px; }
-    button { background: #4CAF50; color: white; border: none; border-radius: 6px; }
-    #hasil { margin-top: 15px; font-weight: bold; }
+    body {font-family: Arial; text-align: center; padding: 20px;}
+    #reader {width: 100%; max-width: 400px; margin: 20px auto;}
+    #status {font-size: 18px; margin: 20px;}
   </style>
 </head>
 <body>
-
-  <h2>Absensi Kehadiran</h2>
-
-  <input type="text" id="nama" placeholder="Nama lengkap">
-
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-
-  <button onclick="ambilFoto()">📷 Ambil Foto</button>
-  <button onclick="kirimAbsen()">✅ Kirim Absensi</button>
-
-  <div id="hasil"></div>
-
+  <h2>Absensi Guru - Scan QR Code</h2>
+  <div id="reader"></div>
+  <div id="status">Arahkan kamera ke QR Code</div>
   <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    let fotoBase64 = "";
+    const URL_EXEC = "https://script.google.com/macros/s/AKfycbxClgr-Qn0BD6sQppzv_Cmc7GO9XG__dF7SF17NMH9wvdS44qS43PNLysaAA1eIYf_Y/exec"; //
 
-    // Minta izin kamera saat halaman dibuka
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => {
-        document.getElementById('hasil').innerText = "Gagal akses kamera: " + err.message;
-      });
+    const html5QrCode = new Html5Qrcode("reader");
 
-    function ambilFoto() {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      fotoBase64 = canvas.toDataURL('image/jpeg');
-      document.getElementById('hasil').innerText = "Foto berhasil diambil ✅";
-    }
+    function onScanSuccess(decodedText) {
+      const nama = decodedText.trim();
+      document.getElementById('status').innerHTML = "Mengecek lokasi...";
 
-    function kirimAbsen() {
-      const nama = document.getElementById('nama').value;
-      if (!nama) { alert("Isi nama dulu"); return; }
-      if (!fotoBase64) { alert("Ambil foto dulu"); return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-      document.getElementById('hasil').innerText = "Mengirim...";
+        const sekolahLat = -1.456100664473237; //
+        const sekolahLng = 122.3611767937154; //
+        const radius = 100;
 
-      fetch("https://script.google.com/macros/s/AKfycbwV5JU-KuNf83qJLZiFromprt9o3RiM_u7AANnK35eIDjW-FklaBQnhiEF99UBiCq8_/exec", {
-        method: "POST",
-        body: JSON.stringify({ nama: nama, foto: fotoBase64 }),
-        headers: { "Content-Type": "text/plain" }
-      })
-      .then(res => res.text())
-      .then(data => {
-        document.getElementById('hasil').innerText = "Absensi berhasil dikirim ✅";
-      })
-      .catch(err => {
-        document.getElementById('hasil').innerText = "Gagal kirim: " + err;
+        const jarak = hitungJarak(lat, lng, sekolahLat, sekolahLng);
+
+        if (jarak <= radius) {
+          fetch(`${URL_EXEC}?nama=${encodeURIComponent(nama)}&lat=${lat}&lng=${lng}`)
+            .then(res => res.text())
+            .then(msg => {
+              document.getElementById('status').innerHTML = `<span style="color:green">${msg}</span>`;
+            })
+            .catch(err => {
+              document.getElementById('status').innerHTML = `<span style="color:red">Gagal kirim: ${err}</span>`;
+            });
+        } else {
+          document.getElementById('status').innerHTML = `<span style="color:red">❌ Di luar area! Jarak ${jarak.toFixed(0)}m</span>`;
+        }
       });
     }
+
+    function hitungJarak(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    html5QrCode.start({facingMode: "environment"}, {fps: 10, qrbox: 280}, onScanSuccess);
   </script>
-
 </body>
 </html>
