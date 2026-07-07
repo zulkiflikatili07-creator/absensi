@@ -7,6 +7,7 @@
     body {font-family: Arial; text-align: center; padding: 20px;}
     #reader {width: 100%; max-width: 400px; margin: 20px auto;}
     #status {font-size: 18px; margin: 20px;}
+    button {padding: 10px 20px; font-size: 16px; margin-top: 10px; border-radius: 6px; border: none; background: #4285F4; color: white;}
   </style>
 </head>
 <body>
@@ -14,20 +15,25 @@
   <div id="reader"></div>
   <div id="status">Arahkan kamera ke QR Code</div>
   <script>
-    const URL_EXEC = "https://script.google.com/macros/s/AKfycbxClgr-Qn0BD6sQppzv_Cmc7GO9XG__dF7SF17NMH9wvdS44qS43PNLysaAA1eIYf_Y/exec"; //
+    const URL_EXEC = "https://script.google.com/macros/s/AKfycbxClgr-Qn0BD6sQppzv_Cmc7GO9XG__dF7SF17NMH9wvdS44qS43PNLysaAA1eIYf_Y/exec";
 
     const html5QrCode = new Html5Qrcode("reader");
+    let sedangProses = false;
 
     function onScanSuccess(decodedText) {
+      if (sedangProses) return;
+      sedangProses = true;
+
+      html5QrCode.pause();
+
       const nama = decodedText.trim();
       document.getElementById('status').innerHTML = "Mengecek lokasi...";
 
       navigator.geolocation.getCurrentPosition(pos => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-
-        const sekolahLat = -1.456100664473237; //
-        const sekolahLng = 122.3611767937154; //
+        const sekolahLat = -1.456100664473237;
+        const sekolahLng = 122.3611767937154;
         const radius = 100;
 
         const jarak = hitungJarak(lat, lng, sekolahLat, sekolahLng);
@@ -36,15 +42,21 @@
           fetch(`${URL_EXEC}?nama=${encodeURIComponent(nama)}&lat=${lat}&lng=${lng}`)
             .then(res => res.text())
             .then(msg => {
-              document.getElementById('status').innerHTML = `<span style="color:green">${msg}</span>`;
+              document.getElementById('status').innerHTML = `<span style="color:green">${msg}</span><br><button onclick="scanLagi()">🔄 Scan Lagi</button>`;
             })
             .catch(err => {
-              document.getElementById('status').innerHTML = `<span style="color:red">Gagal kirim: ${err}</span>`;
+              document.getElementById('status').innerHTML = `<span style="color:red">Gagal kirim: ${err}</span><br><button onclick="scanLagi()">🔄 Scan Lagi</button>`;
             });
         } else {
-          document.getElementById('status').innerHTML = `<span style="color:red">❌ Di luar area! Jarak ${jarak.toFixed(0)}m</span>`;
+          document.getElementById('status').innerHTML = `<span style="color:red">❌ Di luar area! Jarak ${jarak.toFixed(0)}m</span><br><button onclick="scanLagi()">🔄 Scan Lagi</button>`;
         }
       });
+    }
+
+    function scanLagi() {
+      sedangProses = false;
+      html5QrCode.resume();
+      document.getElementById('status').innerHTML = "Arahkan kamera ke QR Code";
     }
 
     function hitungJarak(lat1, lon1, lat2, lon2) {
