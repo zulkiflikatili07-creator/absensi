@@ -9,9 +9,9 @@
   .tabs { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
   .tab-btn { padding: 10px 14px; border: none; border-radius: 6px; background: #ddd; cursor: pointer; }
   .tab-btn.active { background: #4285F4; color: white; }
-  .panel { display: none; background: white; padding: 15px; border-radius: 8px; }
+  .panel { display: none; background: white; padding: 15px; border-radius: 8px; overflow-x: auto; }
   .panel.active { display: block; }
-  input, button.aksi { padding: 8px; margin: 5px 0; border-radius: 4px; border: 1px solid #ccc; }
+  input, button.aksi { padding: 8px; margin: 5px 0; border-radius: 4px; border: 1px solid #ccc; font-size: 15px; }
   button.aksi { background: #34A853; color: white; border: none; cursor: pointer; }
   table { width: 100%; border-collapse: collapse; margin-top: 10px; }
   th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 14px; }
@@ -25,7 +25,7 @@
 
 <div id="lockScreen">
   <h2>🔒 Dashboard Absensi</h2>
-  <input type="password" id="pwInput" placeholder="Masukkan password">
+  <input type="password" id="pwInput" placeholder="smpn1056789">
   <br><button class="aksi" onclick="cekPassword()">Masuk</button>
   <p id="pwError" style="color:red;"></p>
 </div>
@@ -34,44 +34,68 @@
   <h2>📊 Dashboard Absensi Sekolah</h2>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('absHarian')">Absensi Harian</button>
-    <button class="tab-btn" onclick="showTab('absBulanan')">Absensi Bulanan</button>
-    <button class="tab-btn" onclick="showTab('kbmHarian')">KBM Harian</button>
-    <button class="tab-btn" onclick="showTab('kbmBulanan')">KBM Bulanan</button>
+    <button class="tab-btn active" onclick="showTab('absHarian', this)">Absensi Harian</button>
+    <button class="tab-btn" onclick="showTab('absBulanan', this)">Absensi Bulanan</button>
+    <button class="tab-btn" onclick="showTab('kbmHarian', this)">KBM Harian</button>
+    <button class="tab-btn" onclick="showTab('kbmBulanan', this)">KBM Bulanan</button>
   </div>
 
   <div id="absHarian" class="panel active">
-    <label>Tanggal (DD/MM/YYYY): </label>
-    <input type="text" id="tglAbsHarian" placeholder="16/09/2026">
+    <label>Tanggal: </label>
+    <input type="date" id="tglAbsHarian">
     <button class="aksi" onclick="loadAbsensiHarian()">Tampilkan</button>
     <div id="hasilAbsHarian"></div>
   </div>
 
   <div id="absBulanan" class="panel">
-    <label>Bulan (1-12): </label><input type="number" id="bulanAbsBulanan" min="1" max="12" style="width:60px">
-    <label>Tahun: </label><input type="number" id="tahunAbsBulanan" style="width:80px">
+    <label>Bulan: </label>
+    <input type="month" id="bulanAbsBulanan">
     <button class="aksi" onclick="loadAbsensiBulanan()">Tampilkan</button>
     <div id="hasilAbsBulanan"></div>
   </div>
 
   <div id="kbmHarian" class="panel">
-    <label>Tanggal (DD/MM/YYYY): </label>
-    <input type="text" id="tglKbmHarian" placeholder="16/09/2026">
+    <label>Tanggal: </label>
+    <input type="date" id="tglKbmHarian">
     <button class="aksi" onclick="loadKBMHarian()">Tampilkan</button>
     <div id="hasilKbmHarian"></div>
   </div>
 
   <div id="kbmBulanan" class="panel">
-    <label>Bulan (1-12): </label><input type="number" id="bulanKbmBulanan" min="1" max="12" style="width:60px">
-    <label>Tahun: </label><input type="number" id="tahunKbmBulanan" style="width:80px">
+    <label>Bulan: </label>
+    <input type="month" id="bulanKbmBulanan">
     <button class="aksi" onclick="loadKBMBulanan()">Tampilkan</button>
     <div id="hasilKbmBulanan"></div>
   </div>
 </div>
 
 <script>
-  const PASSWORD = "smpn10toili56789";
+  const PASSWORD = "GANTI_PASSWORD_KAMU";
   const URL_EXEC = "https://script.google.com/macros/s/AKfycbxClgr-Qn0BD6sQppzv_Cmc7GO9XG__dF7SF17NMH9wvdS44qS43PNLysaAA1eIYf_Y/exec";
+
+  // Isi awal: hari ini dan bulan ini
+  (function isiDefault() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    document.getElementById('tglAbsHarian').value = `${y}-${m}-${d}`;
+    document.getElementById('tglKbmHarian').value = `${y}-${m}-${d}`;
+    document.getElementById('bulanAbsBulanan').value = `${y}-${m}`;
+    document.getElementById('bulanKbmBulanan').value = `${y}-${m}`;
+  })();
+
+  // Ubah 2026-10-15 menjadi 15/10/2026
+  function ubahTanggal(v) {
+    const [y, m, d] = v.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  // Ubah 2026-10 menjadi { bulan: 10, tahun: 2026 }
+  function ubahBulan(v) {
+    const [y, m] = v.split('-');
+    return { bulan: parseInt(m), tahun: parseInt(y) };
+  }
 
   function cekPassword() {
     const input = document.getElementById('pwInput').value;
@@ -83,53 +107,62 @@
     }
   }
 
-  function showTab(id) {
+  function showTab(id, tombol) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    event.target.classList.add('active');
+    tombol.classList.add('active');
+  }
+
+  function tampilError(idElemen, pesan) {
+    document.getElementById(idElemen).innerHTML = '<p style="color:red;">' + pesan + '</p>';
   }
 
   function loadAbsensiHarian() {
-    const tgl = document.getElementById('tglAbsHarian').value;
+    const v = document.getElementById('tglAbsHarian').value;
+    if (!v) { tampilError('hasilAbsHarian', 'Pilih tanggal dulu.'); return; }
     document.getElementById('hasilAbsHarian').innerHTML = 'Memuat...';
-    fetch(`${URL_EXEC}?action=absensiHarian&tanggal=${tgl}`)
+    fetch(`${URL_EXEC}?action=absensiHarian&tanggal=${ubahTanggal(v)}`)
       .then(r => r.json())
       .then(res => {
-        if (res.error) { document.getElementById('hasilAbsHarian').innerHTML = 'Error: ' + res.error; return; }
+        if (res.error) { tampilError('hasilAbsHarian', 'Error: ' + res.error); return; }
         let html = '<table><tr><th>Nama</th><th>Status</th><th>Jam</th></tr>';
         res.data.forEach(g => {
           html += `<tr><td>${g.nama}</td><td class="${g.status==='Hadir'?'hadir':'tidak'}">${g.status}</td><td>${g.jam}</td></tr>`;
         });
         html += '</table>';
         document.getElementById('hasilAbsHarian').innerHTML = html;
-      });
+      })
+      .catch(err => tampilError('hasilAbsHarian', 'Gagal memuat: ' + err));
   }
 
   function loadAbsensiBulanan() {
-    const bulan = document.getElementById('bulanAbsBulanan').value;
-    const tahun = document.getElementById('tahunAbsBulanan').value;
+    const v = document.getElementById('bulanAbsBulanan').value;
+    if (!v) { tampilError('hasilAbsBulanan', 'Pilih bulan dulu.'); return; }
+    const { bulan, tahun } = ubahBulan(v);
     document.getElementById('hasilAbsBulanan').innerHTML = 'Memuat...';
     fetch(`${URL_EXEC}?action=absensiBulanan&bulan=${bulan}&tahun=${tahun}`)
       .then(r => r.json())
       .then(res => {
-        if (res.error) { document.getElementById('hasilAbsBulanan').innerHTML = 'Error: ' + res.error; return; }
+        if (res.error) { tampilError('hasilAbsBulanan', 'Error: ' + res.error); return; }
         let html = '<table><tr><th>Nama</th><th>Hadir</th><th>Total Hari Kerja</th><th>Persentase</th></tr>';
         res.data.forEach(g => {
           html += `<tr><td>${g.nama}</td><td>${g.hadir}</td><td>${g.totalHariKerja}</td><td>${g.persen}%</td></tr>`;
         });
         html += '</table>';
         document.getElementById('hasilAbsBulanan').innerHTML = html;
-      });
+      })
+      .catch(err => tampilError('hasilAbsBulanan', 'Gagal memuat: ' + err));
   }
 
   function loadKBMHarian() {
-    const tgl = document.getElementById('tglKbmHarian').value;
+    const v = document.getElementById('tglKbmHarian').value;
+    if (!v) { tampilError('hasilKbmHarian', 'Pilih tanggal dulu.'); return; }
     document.getElementById('hasilKbmHarian').innerHTML = 'Memuat...';
-    fetch(`${URL_EXEC}?action=kbmHarian&tanggal=${tgl}`)
+    fetch(`${URL_EXEC}?action=kbmHarian&tanggal=${ubahTanggal(v)}`)
       .then(r => r.json())
       .then(res => {
-        if (res.error) { document.getElementById('hasilKbmHarian').innerHTML = 'Error: ' + res.error; return; }
+        if (res.error) { tampilError('hasilKbmHarian', 'Error: ' + res.error); return; }
         let html = '<table><tr><th>Kelas</th><th>Mapel</th><th>Guru</th><th>Status</th><th>Keterangan</th></tr>';
         res.data.forEach(g => {
           const st = g.status.toString().toUpperCase().includes('TIDAK') ? 'tidak' : 'hadir';
@@ -137,24 +170,27 @@
         });
         html += '</table>';
         document.getElementById('hasilKbmHarian').innerHTML = html;
-      });
+      })
+      .catch(err => tampilError('hasilKbmHarian', 'Gagal memuat: ' + err));
   }
 
   function loadKBMBulanan() {
-    const bulan = document.getElementById('bulanKbmBulanan').value;
-    const tahun = document.getElementById('tahunKbmBulanan').value;
+    const v = document.getElementById('bulanKbmBulanan').value;
+    if (!v) { tampilError('hasilKbmBulanan', 'Pilih bulan dulu.'); return; }
+    const { bulan, tahun } = ubahBulan(v);
     document.getElementById('hasilKbmBulanan').innerHTML = 'Memuat...';
     fetch(`${URL_EXEC}?action=kbmBulanan&bulan=${bulan}&tahun=${tahun}`)
       .then(r => r.json())
       .then(res => {
-        if (res.error) { document.getElementById('hasilKbmBulanan').innerHTML = 'Error: ' + res.error; return; }
+        if (res.error) { tampilError('hasilKbmBulanan', 'Error: ' + res.error); return; }
         let html = '<table><tr><th>Nama Guru</th><th>Total Tercatat</th><th>Hadir</th><th>Tidak Hadir</th><th>Persentase</th></tr>';
         res.data.forEach(g => {
           html += `<tr><td>${g.nama}</td><td>${g.total}</td><td>${g.hadir}</td><td>${g.tidakHadir}</td><td>${g.persen}%</td></tr>`;
         });
         html += '</table>';
         document.getElementById('hasilKbmBulanan').innerHTML = html;
-      });
+      })
+      .catch(err => tampilError('hasilKbmBulanan', 'Gagal memuat: ' + err));
   }
 </script>
 </body>
